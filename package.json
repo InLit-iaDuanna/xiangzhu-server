@@ -1,0 +1,38 @@
+{
+  "name": "xiangzhu-server",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env.local --import tsx server/main.ts",
+    "migrate": "node --env-file=.env.local --import tsx server/migrate.ts",
+    "bootstrap": "node --env-file=.env.local --import tsx server/bootstrap.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@fastify/cors": "11.3.0",
+    "@fastify/multipart": "10.1.1",
+    "@fastify/rate-limit": "11.2.0",
+    "@langchain/core": "1.2.9",
+    "@langchain/langgraph": "1.4.14",
+    "@langchain/langgraph-checkpoint": "1.1.5",
+    "better-auth": "1.7.3",
+    "fastify": "5.12.3",
+    "zod": "4.6.0",
+    "xstate": "5.32.6",
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.6.0",
+    "dexie": "4.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

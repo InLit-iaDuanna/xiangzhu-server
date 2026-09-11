@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# build & cache
+/dist/
+*.tsbuildinfo
+
+# runtime data（材料库 / pglite 数据 / 知识库均为运行时生成）
+/work/
+
+# local environment & secrets
+.env
+.env.*
+!.env.example
+
+# macOS resource forks
+._*
+.DS_Store
+
+# logs & temp
+*.log
+tmp/
