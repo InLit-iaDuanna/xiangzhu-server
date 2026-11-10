@@ -21,9 +21,9 @@
     "@langchain/core": "1.2.9",
     "@langchain/langgraph": "1.4.14",
     "@langchain/langgraph-checkpoint": "1.1.5",
-    "better-auth": "1.7.3",
-    "fastify": "5.12.3",
-    "zod": "4.6.0",
+    "better-auth": "1.7.20",
+    "fastify": "5.12.8",
+    "zod": "4.6.7",
     "xstate": "5.32.6",
     "clsx": "2.1.1",
     "tailwind-merge": "3.6.0",
@@ -33,6 +33,6 @@
     "@types/node": "22.19.19",
     "tsx": "4.23.13",
     "typescript": "5.9.3",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   }
 }
