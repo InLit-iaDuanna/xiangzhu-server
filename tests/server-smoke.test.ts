@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -103,16 +103,170 @@ describe('工作台文档（doc 乐观锁）', () => {
   });
 });
 
+describe('后端项目创建（UI 项目映射幂等）', () => {
+  it('相同稳定 ID 重试只创建一个后端项目', async () => {
+    const payload = {
+      id: 'ui-project-stable-id',
+      name: '映射测试项目',
+      mode: 'demo',
+    };
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      payload,
+    });
+    const retry = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      payload,
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(retry.statusCode).toBe(200);
+    expect(first.json().id).toBe(payload.id);
+    expect(retry.json().id).toBe(payload.id);
+    const list = await app.inject({ method: 'GET', url: '/api/v1/projects' });
+    expect(list.json().filter((project: { id: string }) => project.id === payload.id)).toHaveLength(1);
+  });
+});
+
 describe('协作区 AI 状态端点', () => {
-  it('GET /api/v1/assistant/status 返回可用性结构', async () => {
+  it('GET /api/v1/assistant/status 脱敏返回文本与生图配置', async () => {
+    vi.stubEnv('TEXT_AI_PROVIDER', 'openai-compatible');
+    vi.stubEnv('TEXT_API_PROTOCOL', 'chat-completions');
+    vi.stubEnv('TEXT_API_BASE_URL', 'https://private.example/v1');
+    vi.stubEnv('TEXT_API_KEY', 'mock-text-secret');
+    vi.stubEnv('TEXT_API_MODEL', 'mock-text-model');
+    vi.stubEnv('IMAGE_EXECUTOR', 'openai-compatible');
+    vi.stubEnv('IMAGE_API_BASE_URL', 'https://private-image.example/v1');
+    vi.stubEnv('IMAGE_API_KEY', 'mock-image-secret');
+    vi.stubEnv('IMAGE_MODEL', 'mock-image-model');
     const res = await app.inject({
       method: 'GET',
       url: '/api/v1/assistant/status',
     });
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body).toHaveProperty('available');
-    expect(body).toHaveProperty('cliPath');
-    expect(body).toHaveProperty('version');
+    try {
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body).toMatchObject({
+        available: true,
+        textAI: {
+          provider: 'openai-compatible',
+          protocol: 'chat-completions',
+          configured: true,
+          available: true,
+          model: 'mock-text-model',
+        },
+        imageGen: {
+          executor: 'openai-compatible',
+          configured: true,
+          available: true,
+          model: 'mock-image-model',
+        },
+      });
+      expect(body).not.toHaveProperty('cliPath');
+      expect(JSON.stringify(body)).not.toContain('mock-text-secret');
+      expect(JSON.stringify(body)).not.toContain('mock-image-secret');
+      expect(JSON.stringify(body)).not.toContain('private.example');
+      expect(JSON.stringify(body)).not.toContain('private-image.example');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('render route clearly reports an unconfigured image provider without calling an API', async () => {
+    vi.stubEnv('IMAGE_EXECUTOR', 'openai-compatible');
+    vi.stubEnv('IMAGE_API_KEY', '');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/assistant/render',
+        payload: { prompt: '合成场景验收', count: 1 },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ configured: false });
+      expect(res.json().guide).toContain('IMAGE_API_KEY');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('chat route maps provider SSE into the existing app event contract', async () => {
+    vi.stubEnv('TEXT_AI_PROVIDER', 'openai-compatible');
+    vi.stubEnv('TEXT_API_PROTOCOL', 'responses');
+    vi.stubEnv('TEXT_API_BASE_URL', 'https://mock-text.invalid/v1');
+    vi.stubEnv('TEXT_API_KEY', 'mock-chat-secret');
+    vi.stubEnv('TEXT_API_MODEL', 'mock-chat-model');
+    const providerEvents = [
+      { type: 'response.reasoning_summary_text.delta', delta: 'private reasoning' },
+      { type: 'response.output_text.delta', delta: 'Mock answer' },
+      { type: 'response.completed' },
+    ].map((event) => `data: ${JSON.stringify(event)}\n\n`).join('');
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(providerEvents, {
+      headers: { 'Content-Type': 'text/event-stream' },
+    }));
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/assistant/chat',
+        payload: { messages: [{ role: 'user', text: '用一句话介绍工作台。' }] },
+      });
+      expect(res.statusCode).toBe(200);
+      const events = res.body
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => JSON.parse(line.slice(5).trim()));
+      expect(events.map((event: { type: string }) => event.type)).toEqual([
+        'status',
+        'delta',
+        'done',
+      ]);
+      expect(events[1]).toEqual({ type: 'delta', text: 'Mock answer' });
+      expect(res.body).not.toContain('private reasoning');
+      const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+      expect(requestBody.instructions).toContain('乡筑');
+      expect(requestBody.instructions).toContain('当前可用动作');
+      expect(JSON.stringify(requestBody.input)).not.toContain('当前可用动作');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('chat route reports oversized images through the SSE error event without calling a provider', async () => {
+    vi.stubEnv('TEXT_AI_PROVIDER', 'openai-compatible');
+    vi.stubEnv('TEXT_API_PROTOCOL', 'responses');
+    vi.stubEnv('TEXT_API_KEY', 'mock-chat-secret');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/assistant/chat',
+        payload: {
+          messages: [{ role: 'user', text: '请看这张图。' }],
+          attachments: [{ kind: 'image', mime: 'image/png', data: 'A'.repeat(11_184_816) }],
+        },
+      });
+      const events = res.body
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => JSON.parse(line.slice(5).trim()));
+      expect(res.statusCode).toBe(200);
+      expect(events).toEqual([{
+        type: 'error',
+        code: 'ATTACHMENT_TOO_LARGE',
+        message: '单张对话图片不能超过 8 MB。',
+      }]);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
   });
 });

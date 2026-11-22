@@ -1,6 +1,6 @@
 {
   "name": "xiangzhu-server",
-  "version": "2.1.0",
+  "version": "3.2.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,7 +11,9 @@
     "migrate": "node --env-file=.env.local --import tsx server/migrate.ts",
     "bootstrap": "node --env-file=.env.local --import tsx server/bootstrap.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "kb:sync": "node --import tsx scripts/kb.ts sync",
+    "kb:check": "node --import tsx scripts/kb.ts check"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.8",

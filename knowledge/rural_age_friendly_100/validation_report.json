@@ -1,0 +1,33 @@
+{
+  "case_count": 100,
+  "unique_case_ids": 100,
+  "unique_case_names": 100,
+  "source_page_count": 67,
+  "province_level_regions": 23,
+  "year_counts": {
+    "2022": 3,
+    "2023": 10,
+    "2024": 19,
+    "2025": 44,
+    "2026": 24
+  },
+  "2024_2026_report_count": 87,
+  "read_fulltext_case_count": 65,
+  "search_text_case_count": 35,
+  "coarse_topics": {
+    "住宅与村庄空间": 35,
+    "近家安居与互助网络": 14,
+    "健康、参与与运营": 10,
+    "入户照护与服务组织": 17,
+    "存量设施与复合空间": 13,
+    "助餐与食品服务": 11
+  },
+  "rule_count": 16,
+  "synthetic_eval_count": 12,
+  "leakage_group_count": 62,
+  "xlsx_zip_integrity": "passed",
+  "workbook_summary_values": "100 / 87 / 67; years 3,10,19,44,24; access 65,35",
+  "formula_error_scan": "no listed Excel error tokens found",
+  "verification_boundary": "结构与本地显示检查；不代表独立现场核验、原文版权许可或模型训练验证",
+  "as_of": "2026-09-09"
+}

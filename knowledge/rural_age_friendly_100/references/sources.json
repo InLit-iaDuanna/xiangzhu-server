@@ -1,0 +1,772 @@
+[
+  {
+    "source_id": "S001",
+    "title": "一个粤北村庄的适老化试验",
+    "publisher": "央视网",
+    "reported_date": "2024-01-28",
+    "url": "https://news.cctv.com/2024/01/28/ARTIakpZyD3LEIkBtVkcsods240128.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R001"
+    ]
+  },
+  {
+    "source_id": "S002",
+    "title": "江苏省为特殊困难老人生活搭建数字桥梁",
+    "publisher": "新华日报／中共江苏省委新闻网",
+    "reported_date": "2023-03-01",
+    "url": "https://www.zgjssw.gov.cn/yaowen/202303/t20230301_7846598.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R002",
+      "R003"
+    ]
+  },
+  {
+    "source_id": "S003",
+    "title": "“老”安心了！适老化改造，让居家养老更有温度",
+    "publisher": "宁国市人民政府",
+    "reported_date": "2025",
+    "url": "https://www.ningguo.gov.cn/News/show/1612581.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R004",
+      "R005"
+    ]
+  },
+  {
+    "source_id": "S004",
+    "title": "【暖民心见行动】适老化“小改造” 托起老人生活“大幸福”",
+    "publisher": "广德市人民政府",
+    "reported_date": "2025-01-27",
+    "url": "https://www.guangde.gov.cn/News/show/1610006.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R006"
+    ]
+  },
+  {
+    "source_id": "S005",
+    "title": "让居家养老安心更暖心（深阅读·关注适老化改造）",
+    "publisher": "人民日报",
+    "reported_date": "2026-07-21",
+    "url": "https://paper.people.com.cn/rmrb/pc/content/202607/21/content_30169914.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R007"
+    ]
+  },
+  {
+    "source_id": "S006",
+    "title": "适老化改造，让老人通行畅通无阻",
+    "publisher": "新华网／南通市通州区民政局",
+    "reported_date": "2023-11-03",
+    "url": "https://js.news.cn/20231103/53b866e8842f42adb5c218c10c9c64b0/c.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R008"
+    ]
+  },
+  {
+    "source_id": "S007",
+    "title": "居家适老化改造首单落地",
+    "publisher": "江都区人民政府／江都融媒",
+    "reported_date": "2024-12-18",
+    "url": "https://www.jiangdu.gov.cn/xwzx/zwdt/art/2024/art_0ebe2c1c34924e9b9b4c9ebed62268a5.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R009"
+    ]
+  },
+  {
+    "source_id": "S008",
+    "title": "永州冷水滩：加快适老化改造 托起老人“稳稳的幸福”",
+    "publisher": "冷水滩区人民政府",
+    "reported_date": "2024-07-11",
+    "url": "https://www.lst.gov.cn/lstzwzx/0200/202407/519015e37eec4d138cf90f59db28db0b.shtml",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R010"
+    ]
+  },
+  {
+    "source_id": "S009",
+    "title": "通道县司法局驻村工作队：“小改造”承载“大幸福”",
+    "publisher": "湖南普法网",
+    "reported_date": "2024-06-20",
+    "url": "https://www.hnpfw.com/content/646840/64/14016131.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R011"
+    ]
+  },
+  {
+    "source_id": "S010",
+    "title": "东安：小改造承载大幸福 适老化改造暖了老人“新”窝窝",
+    "publisher": "红网",
+    "reported_date": "2024-10-21",
+    "url": "https://hn.rednet.cn/content/646854/65/14378511.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R012"
+    ]
+  },
+  {
+    "source_id": "S011",
+    "title": "安徽天长：家庭床位“微”改造 解决养老大难题",
+    "publisher": "新华丝路",
+    "reported_date": "2024-10-21",
+    "url": "https://www.imsilkroad.com/news/p/528478.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R013"
+    ]
+  },
+  {
+    "source_id": "S012",
+    "title": "让老人在熟悉的环境中乐享晚年",
+    "publisher": "民生周刊",
+    "reported_date": "2025-02-10",
+    "url": "https://paper.people.com.cn/mszk/pc/content/202502/10/content_30058855.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R014",
+      "R015",
+      "R016"
+    ]
+  },
+  {
+    "source_id": "S013",
+    "title": "滨州：让老人在熟悉的环境中乐享晚年",
+    "publisher": "山东省民政厅",
+    "reported_date": "2025-02-25",
+    "url": "https://mzt.shandong.gov.cn/art/2025/2/25/art_15317_10329380.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R017"
+    ]
+  },
+  {
+    "source_id": "S014",
+    "title": "全市4205户老年人家庭完成适老化改造",
+    "publisher": "宝鸡市人民政府",
+    "reported_date": "2025-12-15",
+    "url": "https://www.baoji.gov.cn/col9816/col9817/col9872/col9879/202512/t20251215_1233891.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R018"
+    ]
+  },
+  {
+    "source_id": "S015",
+    "title": "10米、100米、1000米……一次适老化改造能带来什么？",
+    "publisher": "重庆市人民政府",
+    "reported_date": "2022-08-08",
+    "url": "https://www.cq.gov.cn/zwgk/zfxxgkzl/fdzdgknr/zdmsxx/shbz/shbz_ssqk/202208/t20220808_10985179.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R019"
+    ]
+  },
+  {
+    "source_id": "S016",
+    "title": "焦点访谈20260522 适老还是“啃”老？",
+    "publisher": "中央广播电视总台",
+    "reported_date": "2026-05-22",
+    "url": "https://tv.cctv.com/2026/05/22/VIDEB3chSAs4DAQJ7TrRoMGk260522.shtml",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R020"
+    ]
+  },
+  {
+    "source_id": "S017",
+    "title": "新疆维吾尔自治区吉木萨尔县：“健康+养生”农村互助养老模式 让农村老年人共享夕阳红",
+    "publisher": "国家发展改革委",
+    "reported_date": "2025-09-01",
+    "url": "https://www.ndrc.gov.cn/xwdt/ztzl/qgncggfwdxal/202509/t20250901_1400196.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R021"
+    ]
+  },
+  {
+    "source_id": "S018",
+    "title": "广东省汕头市潮阳区：“呼援通”创新居家养老服务新机制",
+    "publisher": "国家发展改革委",
+    "reported_date": "2025-02-10",
+    "url": "https://www.ndrc.gov.cn/xwdt/ztzl/qgncggfwdxal/202502/t20250210_1396081.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R022"
+    ]
+  },
+  {
+    "source_id": "S019",
+    "title": "山东省荣成市：打造“海螺姑娘”社会救助服务品牌 叩响农村分散供养特困人员幸福之门",
+    "publisher": "国家发展改革委",
+    "reported_date": "2024-11-14",
+    "url": "https://www.ndrc.gov.cn/xwdt/ztzl/qgncggfwdxal/202411/t20241114_1394476.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R023"
+    ]
+  },
+  {
+    "source_id": "S020",
+    "title": "浙江省舟山市普陀区：打造“健康方舟”，打通海岛健康服务“最后一海里”",
+    "publisher": "国家发展改革委",
+    "reported_date": "2024-07-26",
+    "url": "https://www.ndrc.gov.cn/xwdt/ztzl/qgncggfwdxal/202407/t20240726_1391991.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R024"
+    ]
+  },
+  {
+    "source_id": "S021",
+    "title": "山西省大同市云州区：“颐养工程”探索农村养老新路子",
+    "publisher": "国家发展改革委",
+    "reported_date": "2024-05-27",
+    "url": "https://www.ndrc.gov.cn/xwdt/ztzl/qgncggfwdxal/202405/t20240527_1386472.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R025"
+    ]
+  },
+  {
+    "source_id": "S022",
+    "title": "闽侯：互助养老让农村老人有所依、有所为",
+    "publisher": "福建日报／福建省人民政府",
+    "reported_date": "2025-03-24",
+    "url": "https://www.fujian.gov.cn/xwdt/mszx/202503/t20250324_6786658.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R026",
+      "R027"
+    ]
+  },
+  {
+    "source_id": "S023",
+    "title": "厦门同安：深耕居家养老服务“主战场”实现农村幸福院“全覆盖”",
+    "publisher": "福建省农业农村厅",
+    "reported_date": "2025-09-28",
+    "url": "https://nynct.fj.gov.cn/ztzl/ncjspzts/jcgz/202510/t20251016_7022009.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R028",
+      "R029",
+      "R030"
+    ]
+  },
+  {
+    "source_id": "S024",
+    "title": "“孝老食堂”开饭了——河北青县探索农村老年助餐服务新路径",
+    "publisher": "光明日报",
+    "reported_date": "2024-08-09",
+    "url": "https://news.gmw.cn/2024-08/09/content_37489678.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R031"
+    ]
+  },
+  {
+    "source_id": "S025",
+    "title": "科尔沁区：“养老大篷车”打通农村牧区养老服务“最后一公里”",
+    "publisher": "通辽市人民政府",
+    "reported_date": "2025-03-05",
+    "url": "https://www.tongliao.gov.cn/xwzx/jrgz/202503/t20250305_926907.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R032"
+    ]
+  },
+  {
+    "source_id": "S026",
+    "title": "温州乐清，入选全国榜单！",
+    "publisher": "乐清市融媒体中心／温州网",
+    "reported_date": "2024-12-23",
+    "url": "https://news.66wz.com/system/2024/12/23/105666062.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R033"
+    ]
+  },
+  {
+    "source_id": "S027",
+    "title": "织密陇原养老网 情暖桑榆夕阳红——2025年甘肃养老服务设施建设成果综述",
+    "publisher": "每日甘肃网",
+    "reported_date": "2025-12-31",
+    "url": "https://gansu.gansudaily.com.cn/system/2025/12/31/031300857.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R034",
+      "R035",
+      "R036",
+      "R037",
+      "R038",
+      "R039",
+      "R040"
+    ]
+  },
+  {
+    "source_id": "S028",
+    "title": "陕西宝鸡：农村互助幸福院织就“养老不出村”幸福网",
+    "publisher": "科技日报",
+    "reported_date": "2025-09-15",
+    "url": "https://www.stdaily.com/web/gdxw/2025-09/15/content_401226.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R041",
+      "R042",
+      "R043",
+      "R044",
+      "R045"
+    ]
+  },
+  {
+    "source_id": "S029",
+    "title": "幸福院里幸福多",
+    "publisher": "铜川日报／三秦网",
+    "reported_date": "2025-08-15",
+    "url": "https://www.sanqin.com/2025-08/15/content_11291794.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R046"
+    ]
+  },
+  {
+    "source_id": "S030",
+    "title": "让农村养老服务触手可及",
+    "publisher": "福建日报／福建省人民政府",
+    "reported_date": "2025-01-19",
+    "url": "https://www.fj.gov.cn/xwdt/mszx/202501/t20250119_6704497.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R047",
+      "R048"
+    ]
+  },
+  {
+    "source_id": "S031",
+    "title": "托起“一老一小”稳稳的幸福",
+    "publisher": "人民日报",
+    "reported_date": "2024-12-25",
+    "url": "https://paper.people.com.cn/rmrb/pc/content/202412/25/content_30048124.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R049"
+    ]
+  },
+  {
+    "source_id": "S032",
+    "title": "“椿萱庭”的启示：如何让农村老人以满意的方式迎接百岁人生？",
+    "publisher": "上海市农业农村委员会",
+    "reported_date": "2025-01-15",
+    "url": "https://nyncw.sh.gov.cn/mtbd/20250115/72b729fdc9a848219df37a6682f7cffe.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R050",
+      "R051"
+    ]
+  },
+  {
+    "source_id": "S033",
+    "title": "搬进幸福院养老不离村——灵台县温家庄村互助幸福院见闻",
+    "publisher": "甘肃日报／新华网",
+    "reported_date": "2026-03-25",
+    "url": "https://gs.news.cn/20260325/31d63d575ae5487e8363071d3ab0fd64/c.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R052"
+    ]
+  },
+  {
+    "source_id": "S034",
+    "title": "“七元协同”照见乡村“幸福食堂”新出路",
+    "publisher": "福建日报／新浪财经转载",
+    "reported_date": "2025-12-28",
+    "url": "https://finance.sina.com.cn/jjxw/2025-12-28/doc-inhehypw9144531.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R053"
+    ]
+  },
+  {
+    "source_id": "S035",
+    "title": "托起1.2亿农村老人稳稳的幸福——专家和委员解读《关于加快发展农村养老服务的指导意见》",
+    "publisher": "人民政协报／河南政协",
+    "reported_date": "2025-05-28",
+    "url": "https://hnzx.gov.cn/2024/07-18/4340833.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R054",
+      "R080"
+    ]
+  },
+  {
+    "source_id": "S036",
+    "title": "南涧县做好农村“一老一小”工作——“幸福小院”绘就幸福图景",
+    "publisher": "大理日报／今日大理",
+    "reported_date": "2026-05-18",
+    "url": "https://www.dalidaily.com/xs/njxyzzzx/2026/0518/71307.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R055"
+    ]
+  },
+  {
+    "source_id": "S037",
+    "title": "“养老”变“享老”，奉贤老人如何吃好住好？答案在这里",
+    "publisher": "奉贤区人民政府／上海奉贤",
+    "reported_date": "2023-08-22",
+    "url": "https://www.fengxian.gov.cn/col97/20230822/50459.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R056"
+    ]
+  },
+  {
+    "source_id": "S038",
+    "title": "可持续养老奉贤养老社区让“上楼”老人重建家园",
+    "publisher": "人民网－上海频道",
+    "reported_date": "2023-10-23",
+    "url": "https://sh.people.com.cn/n2/2023/1023/c176737-40613780.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R057"
+    ]
+  },
+  {
+    "source_id": "S039",
+    "title": "提前完成，青浦养老民心工程进度条加速推进",
+    "publisher": "上观新闻／新浪转载",
+    "reported_date": "2024-08-09",
+    "url": "https://finance.sina.cn/2024-08-09/detail-inchzyah2389042.d.html?cid=76729&node_id=76729&oid=3818965665571529&vt=4&wm=b212",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R058"
+    ]
+  },
+  {
+    "source_id": "S040",
+    "title": "村办食堂、共享小厨、民宿餐桌……浙江仙居多样助餐助乡村养老",
+    "publisher": "新华网",
+    "reported_date": "2023-12-24",
+    "url": "https://www.zj.xinhua.org/20231224/9cbdff9864924919884aa68af5548bd7/c.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R059"
+    ]
+  },
+  {
+    "source_id": "S041",
+    "title": "新时代中国调研行·黄河篇丨山西中阳：打通养老服务“最后一米”",
+    "publisher": "新华社",
+    "reported_date": "2023-11-19",
+    "url": "https://www.news.cn/politics/2023-11/19/c_1129983373.htm",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R060"
+    ]
+  },
+  {
+    "source_id": "S042",
+    "title": "【讲好民生养老服务故事】管家驻村服务到家",
+    "publisher": "呼伦贝尔市民政局",
+    "reported_date": "2025-09-24",
+    "url": "https://mzj.hlbe.gov.cn/News/show/1378798.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R061"
+    ]
+  },
+  {
+    "source_id": "S043",
+    "title": "山东沂源：公益金助力乡村建设，书写乡村生活幸福歌",
+    "publisher": "人民网－山东频道",
+    "reported_date": "2022-06-24",
+    "url": "https://sd.people.com.cn/n2/2022/0624/c391433-40009858.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R062"
+    ]
+  },
+  {
+    "source_id": "S044",
+    "title": "景宁创新推行“加双筷子”邻里互助养老模式",
+    "publisher": "浙江在线",
+    "reported_date": "2025-12-11",
+    "url": "https://lstk.zjol.com.cn/kdrdmd/202512/t20251211_31394297.shtml",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R063"
+    ]
+  },
+  {
+    "source_id": "S045",
+    "title": "广德：退伍女兵的“跨界养老突围战”",
+    "publisher": "人民网－安徽频道／广德市人民政府",
+    "reported_date": "2025-03-31",
+    "url": "https://www.guangde.gov.cn/News/show/1628345.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R064"
+    ]
+  },
+  {
+    "source_id": "S046",
+    "title": "回望2025·民政奋勇争先｜浦城聚焦“三个三”绘就山区县域养老幸福图景",
+    "publisher": "福建省民政厅",
+    "reported_date": "2026-02-13",
+    "url": "https://mzt.fujian.gov.cn/gk/bmmzdt/nps/202602/t20260213_7098242.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R065"
+    ]
+  },
+  {
+    "source_id": "S047",
+    "title": "福建宁化县：村庄里有了“家门口的养老院”",
+    "publisher": "福建日报／法治网",
+    "reported_date": "2024-09-20",
+    "url": "https://www.legaldaily.com.cn/Village_ruled_by_law/content/2024-09/20/content_9057899.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R066"
+    ]
+  },
+  {
+    "source_id": "S048",
+    "title": "安徽芜湖鸠江区：“小改造”承载“大幸福”",
+    "publisher": "中国网",
+    "reported_date": "2024-08-26",
+    "url": "https://myzg.china.com.cn/2024-08/26/content_42901830.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R067"
+    ]
+  },
+  {
+    "source_id": "S049",
+    "title": "乡村适老化改造，老人下楼即安居",
+    "publisher": "解放日报／央广网",
+    "reported_date": "2026-08-28",
+    "url": "https://www.cnr.cn/shanghai/shtt/20260828/t20260828_527795878.shtml",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R068",
+      "R069",
+      "R070",
+      "R071"
+    ]
+  },
+  {
+    "source_id": "S050",
+    "title": "守望邻里 老有所依（民生一线）",
+    "publisher": "人民日报",
+    "reported_date": "2026-05-19",
+    "url": "https://paper.people.com.cn/rmrb/pc/content/202605/19/content_30157745.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R072",
+      "R073",
+      "R074",
+      "R075",
+      "R076"
+    ]
+  },
+  {
+    "source_id": "S051",
+    "title": "从出行难到乐享晚年 龙桥村构建乡村养老幸福圈",
+    "publisher": "湖北日报／武汉市农业农村局",
+    "reported_date": "2026-06-02",
+    "url": "https://nyncj.wuhan.gov.cn/xwzx_25/whsn/202606/t20260602_2772210.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R077"
+    ]
+  },
+  {
+    "source_id": "S052",
+    "title": "为农村老人提供暖心的服务",
+    "publisher": "人民日报",
+    "reported_date": "2023-12-01",
+    "url": "https://paper.people.com.cn/rmrbwap/html/2023-12/01/nw.D110000renmrb_20231201_6-18.htm",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R078"
+    ]
+  },
+  {
+    "source_id": "S053",
+    "title": "小扶手撑起大安全，崇明完成500户适老化设施建设",
+    "publisher": "崇明区人民政府",
+    "reported_date": "2025-10-11",
+    "url": "https://www.shcm.gov.cn/xwzx/002003/20251011/c951bfc7-9a0a-42c7-8bf8-fe79b8a028ed.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R079"
+    ]
+  },
+  {
+    "source_id": "S054",
+    "title": "硬件升级+服务扩容 农村养老更优质更有温度",
+    "publisher": "央视新闻／中国网",
+    "reported_date": "2025-11-24",
+    "url": "https://news.china.com.cn/2025-11/24/content_118193113.shtml",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R081"
+    ]
+  },
+  {
+    "source_id": "S055",
+    "title": "重庆首个适老化改造项目万州区东桥村 / 道合设计",
+    "publisher": "道合设计授权发布／mooool木藕设计网",
+    "reported_date": "2022-05-20",
+    "url": "https://mooool.com/dongqiao-village-changling-town-wanzhou-district-chongqing-city-by-donehome.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R082"
+    ]
+  },
+  {
+    "source_id": "S056",
+    "title": "西南交通大学：“依校敬孝”，以“1+X”闲置校舍点亮农村互助养老新图景",
+    "publisher": "教育部／西南交通大学",
+    "reported_date": "2024-04-13",
+    "url": "https://xyb.swjtu.edu.cn/info/1891/19022.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R083"
+    ]
+  },
+  {
+    "source_id": "S057",
+    "title": "北京3年筹集50亿元公益金，“小彩票”助力解决民生“急难愁盼”",
+    "publisher": "北京日报／北京市财政局",
+    "reported_date": "2024-06-13",
+    "url": "https://czj.beijing.gov.cn/zwxx/czyw/202406/t20240613_3711425.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R084"
+    ]
+  },
+  {
+    "source_id": "S058",
+    "title": "顺昌：绘就乡村养老幸福画卷",
+    "publisher": "新华网福建频道／福建省民政厅",
+    "reported_date": "2026-07-15",
+    "url": "https://mzt.fujian.gov.cn/gk/bmmzdt/nps/202607/t20260715_7178368.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R085"
+    ]
+  },
+  {
+    "source_id": "S059",
+    "title": "从“空心村”到“幸福里”——福建省建瓯市小桥镇农村养老服务实践",
+    "publisher": "中国社会报／福建省民政厅",
+    "reported_date": "2026-05-15",
+    "url": "https://mzt.fujian.gov.cn/gk/bmmzdt/nps/202605/t20260515_7148077.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R086"
+    ]
+  },
+  {
+    "source_id": "S060",
+    "title": "幸福里，幸福在邻里",
+    "publisher": "福建日报／福建省民政厅",
+    "reported_date": "2026-02-07",
+    "url": "https://mzt.fujian.gov.cn/gk/bmmzdt/nps/202602/t20260209_7090888.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R087",
+      "R088",
+      "R089"
+    ]
+  },
+  {
+    "source_id": "S061",
+    "title": "可用老宅换房票入住，不出社区还能打工……这里的老人很“幸福”",
+    "publisher": "闽北日报／福建省民政厅",
+    "reported_date": "2025-07-07",
+    "url": "https://mzt.fujian.gov.cn/gk/bmmzdt/nps/202507/t20250707_6962259.htm",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R090"
+    ]
+  },
+  {
+    "source_id": "S062",
+    "title": "【永州市】蓝山适老化改造让百姓老有所享",
+    "publisher": "湖南省人民政府门户网站",
+    "reported_date": "2025-01-13",
+    "url": "https://www.hunan.gov.cn/topic/dzls/szdzls/202501/t20250113_33561860.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R091",
+      "R092"
+    ]
+  },
+  {
+    "source_id": "S063",
+    "title": "吉林探求农村养老“最后一公里”突围",
+    "publisher": "中国青年报",
+    "reported_date": "2026-03-24",
+    "url": "https://zqb.cyol.com/pc/content/202603/24/content_423795.html",
+    "evidence_access": "A：已读取网页正文",
+    "case_ids": [
+      "R093",
+      "R094",
+      "R095",
+      "R096"
+    ]
+  },
+  {
+    "source_id": "S064",
+    "title": "以民生“温度”标注幸福“刻度”",
+    "publisher": "人民网安徽频道",
+    "reported_date": "2023-09-28",
+    "url": "https://ah.people.com.cn/n2/2023/0928/c358428-40588511.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R097"
+    ]
+  },
+  {
+    "source_id": "S065",
+    "title": "四川青川：推行适老化改造提升困难老人安全感幸福感",
+    "publisher": "中国网",
+    "reported_date": "2023-01-20",
+    "url": "https://zw.china.com.cn/2023-01/20/content_85070019.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R098"
+    ]
+  },
+  {
+    "source_id": "S066",
+    "title": "河南西峡：扎实推进适老化改造擦亮幸福养老底色",
+    "publisher": "中国网健康",
+    "reported_date": "2024-03-21",
+    "url": "https://health.china.com.cn/2024-03/21/content_42732239.htm?a=true&f=pad",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R099"
+    ]
+  },
+  {
+    "source_id": "S067",
+    "title": "泰安肥城市：探索农村“以田养老”六位一体新模式",
+    "publisher": "泰安市民政局／山东省民政厅",
+    "reported_date": "2024-05-17",
+    "url": "https://mzt.shandong.gov.cn/art/2024/5/17/art_15317_10324260.html",
+    "evidence_access": "B：检索结果文本",
+    "case_ids": [
+      "R100"
+    ]
+  }
+]

@@ -118,10 +118,11 @@ export async function runCodeBuddy(
   prompt: string,
   signal: AbortSignal | undefined,
   images: CodeBuddyImage[] = [],
+  modelOverride?: string,
 ): Promise<CodeBuddyOutput> {
   signal?.throwIfAborted();
   const entry = resolveCodeBuddyEntry();
-  const model = process.env.CODEBUDDY_MODEL ?? DEFAULT_MODEL;
+  const model = modelOverride || process.env.CODEBUDDY_MODEL || DEFAULT_MODEL;
   const timeout = Number(process.env.CODEBUDDY_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   const args = [
     '-p',

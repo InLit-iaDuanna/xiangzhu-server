@@ -5,16 +5,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
+import { searchKnowledge, searchRules, type KnowledgeHit } from './knowledge';
+import { generateImages, imageGenAvailable, imageGenConfig, imageGenGuide } from './image-gen';
+import { getTextAIConfig, streamTextAI, TextAIError } from './text-ai';
 
 /**
  * 协作区 AI 的服务端桥接（V3 统一 AI 通道）。
  *
- * 从 plugins/assistant-api.ts（Vite 中间件）整体迁移：接收对话请求 → 以子进程方式
- * 拉起 `codebuddy -p` → 把 CLI 的 stream-json 事件转成 SSE 增量文本回推给页面。
+ * 接收对话请求 → 复用统一文本 AI 配置路由到 API 或显式选择的 CodeBuddy → SSE 回推文本。
  * 迁移后的差异：
  * - 路由挂在 fastify（:4100），前端经 /api/v1/assistant 代理访问；
  * - 免登录（stub auth）下 preHandler 自动放行；
- * - thinking_delta 不再转发（内部调试内容会泄漏本机路径等，见 handleLine 注释）；
+ * - 不转发 provider 内部 reasoning/thinking 事件；
  * - env 由 `npm run api` 的 --env-file=.env.local 提供，无需插件版 loadLocalEnv。
  */
 
@@ -27,6 +29,19 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_TEXT_ATTACHMENT_CHARS = 60_000;
 
 const MAX_ATTACHMENTS = 12;
+const MAX_CHAT_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_CHAT_TOTAL_IMAGE_BYTES = 24 * 1024 * 1024;
+
+/**
+ * 知识库检索参数。阈值来自 `npm run kb:check` 的自检：相关命中通常 >15 分且至少命中 2 个词，
+ * 寒暄或与乡村改造无关的问题不会命中任何条目，因此不会向提示词注入无关内容。
+ */
+const KNOWLEDGE_CASE_LIMIT = 4;
+const KNOWLEDGE_RULE_LIMIT = 3;
+const KNOWLEDGE_MIN_SCORE = 6;
+const KNOWLEDGE_MIN_TERMS = 2;
+/** 工作区上下文参与检索的字符上限，避免档案长文本稀释本轮问题。 */
+const KNOWLEDGE_CONTEXT_CHARS = 200;
 
 /**
  * CLI 未登录时会把鉴权报错当作正文输出，这类文本不能展示成"AI 的回答"。
@@ -94,6 +109,14 @@ const HERE = (() => {
 
 const PERSONA_FILE = path.join(HERE, 'assistant-persona.md');
 
+function assistantPersona(): string {
+  try {
+    return existsSync(PERSONA_FILE) ? readFileSync(PERSONA_FILE, 'utf8') : '';
+  } catch {
+    return '';
+  }
+}
+
 type ChatRole = 'user' | 'assistant';
 
 type ChatTurn = { role: ChatRole; text: string };
@@ -108,6 +131,8 @@ type ProjectContext = {
   debugScenarioCount?: number;
   debugRunCount?: number;
   planCount?: number;
+  /** 现有方案摘要（序号从 1 起，供 plan.open / plan.setCurrent 引用）。 */
+  planSummaries?: { index?: number; title?: string }[];
   fields?: Record<string, string>;
 };
 
@@ -235,7 +260,7 @@ type AttachmentPayload = {
   text?: string;
 };
 
-type ChatRequestBody = {
+export type ChatRequestBody = {
   messages?: ChatTurn[];
   context?: AssistantContext;
   attachments?: AttachmentPayload[];
@@ -258,6 +283,47 @@ function safeImageMime(mime: string | undefined): string {
   if (value === 'image/jpg') return 'image/jpeg';
   if (IMAGE_MIME_PATTERN.test(value)) return value;
   return 'image/png';
+}
+
+/** Validate and decode chat images before either AI executor sees the payload. */
+export function parseAssistantImages(raw: unknown): { mime: string; bytes: Buffer }[] {
+  const attachments = normalizeAttachments(raw).filter(
+    (item) => clean(item.kind) === 'image',
+  );
+  const decoded: { mime: string; bytes: Buffer }[] = [];
+  let totalBytes = 0;
+
+  for (const item of attachments) {
+    const data = item.data;
+    if (typeof data !== 'string' || !data) {
+      throw new TextAIError('ATTACHMENT_INVALID', '图片附件数据无效，请重新添加后再试。');
+    }
+    const padding = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
+    if (data.length % 4 !== 0) {
+      throw new TextAIError('ATTACHMENT_INVALID', '图片附件数据无效，请重新添加后再试。');
+    }
+    const imageBytes = (data.length / 4) * 3 - padding;
+    if (imageBytes > MAX_CHAT_IMAGE_BYTES) {
+      throw new TextAIError('ATTACHMENT_TOO_LARGE', '单张对话图片不能超过 8 MB。');
+    }
+    totalBytes += imageBytes;
+    if (totalBytes > MAX_CHAT_TOTAL_IMAGE_BYTES) {
+      throw new TextAIError('ATTACHMENTS_TOO_LARGE', '本轮对话图片合计不能超过 24 MB，请减少图片后重试。');
+    }
+
+    const payloadEnd = data.length - padding;
+    if (
+      (padding && data.slice(payloadEnd).length !== padding) ||
+      data.slice(0, payloadEnd).includes('=') ||
+      !/^[A-Za-z0-9+/]*$/.test(data.slice(0, payloadEnd))
+    ) {
+      throw new TextAIError('ATTACHMENT_INVALID', '图片附件数据无效，请重新添加后再试。');
+    }
+
+    decoded.push({ mime: safeImageMime(item.mime), bytes: Buffer.from(data, 'base64') });
+  }
+
+  return decoded;
 }
 
 type StreamPayload =
@@ -359,6 +425,17 @@ function formatContext(context: AssistantContext | undefined): string {
       lines.push(`已登记设施：${project.facilities.join('、')}`);
     }
 
+    const planSummaries = (project.planSummaries ?? []).filter(
+      (item) => clean(item?.title),
+    );
+    if (planSummaries.length) {
+      lines.push(
+        `现有方案：${planSummaries
+          .map((item, i) => `${i + 1}. ${clean(item.title)}`)
+          .join('；')}`,
+      );
+    }
+
     const fields = project.fields ?? {};
     const labelled: Array<[string, string]> = [
       ['userRequirements', '村民与使用需求'],
@@ -402,13 +479,198 @@ function formatContext(context: AssistantContext | undefined): string {
   return lines.join('\n');
 }
 
-function buildPrompt(body: ChatRequestBody): string {
-  const messages = (body.messages ?? []).filter(
+// ---------------------------------------------------------------------------
+// 知识库检索：按本轮问题从 knowledge/ 检索案例与条件化规则，注入提示词。
+// ---------------------------------------------------------------------------
+
+type KnowledgeBlock = { text: string; caseIds: string[]; ruleIds: string[] };
+
+function normalizeMessages(raw: unknown): ChatTurn[] {
+  return (Array.isArray(raw) ? raw : []).filter(
     (item): item is ChatTurn =>
-      !!item && (item.role === 'user' || item.role === 'assistant') &&
-      typeof item.text === 'string',
+      !!item &&
+      typeof item === 'object' &&
+      ((item as ChatTurn).role === 'user' || (item as ChatTurn).role === 'assistant') &&
+      typeof (item as ChatTurn).text === 'string',
+  );
+}
+
+/**
+ * 检索用的查询文本：本轮问题为主，最近一轮用户发言与工作区字段作为补充（截断，
+ * 避免档案长文本把问题本身稀释掉）。
+ */
+function buildKnowledgeQuery(body: ChatRequestBody): string {
+  const messages = normalizeMessages(body.messages);
+  const recent = messages.filter((turn) => turn.role === 'user').slice(-2);
+  const question = recent.map((turn) => clean(turn.text)).filter(Boolean).join('\n');
+
+  const parts: string[] = [];
+  const project = body.context?.project;
+  if (project) {
+    const fields = project.fields ?? {};
+    parts.push(
+      ...[
+        fields.userRequirements,
+        fields.designGoals,
+        fields.elderPersona,
+        fields.mobilityConstraints,
+        fields.testGoal,
+        fields.fieldNotes,
+        fields.openQuestions,
+      ].filter(Boolean) as string[],
+    );
+    if (project.facilities?.length) parts.push(project.facilities.join('、'));
+  }
+  const plan = body.context?.plan;
+  if (plan) {
+    parts.push(
+      ...[plan.title, plan.scene, plan.scope, plan.innovation, plan.body].filter(Boolean) as string[],
+    );
+  }
+
+  const context = parts.join('\n').slice(0, KNOWLEDGE_CONTEXT_CHARS);
+  return [question, context].filter(Boolean).join('\n');
+}
+
+function formatKnowledgeCase(entry: KnowledgeHit): string[] {
+  const where = [entry.region, entry.location].filter(Boolean).join('·');
+  const lines = [
+    `- ${entry.id} ${entry.title}${where ? `（${where}${entry.period ? '，' + entry.period : ''}）` : ''}`,
+  ];
+  if (entry.facts) lines.push(`  案例事实：${entry.facts}`);
+  if (entry.insight) lines.push(`  可迁移推论：${entry.insight}`);
+  if (entry.boundary) lines.push(`  适用边界：${entry.boundary}`);
+  if (entry.source_url) {
+    lines.push(
+      `  出处：${[entry.source_org, entry.source_title].filter(Boolean).join(' ')} ${entry.source_url}`,
+    );
+  }
+  return lines;
+}
+
+function formatKnowledge(entries: KnowledgeHit[]): KnowledgeBlock | null {
+  const cases = entries.filter((entry) => entry.kind === 'case');
+  const rules = entries.filter((entry) => entry.kind === 'rule');
+  if (!cases.length && !rules.length) return null;
+
+  const lines: string[] = [
+    '【知识库参考（本地案例库检索结果，仅限本轮回答使用）】',
+    '使用要求：优先依据下面的案例事实作答；引用时在正文标注编号（案例 R###/P####，规则 AF-D##/PS-D##）与出处；' +
+      '「案例事实」与「可迁移推论」分开表述，「适用边界」外的做法不得照搬；' +
+      '库内没有的尺寸、造价、覆盖率、成效数据一律不得编造，需要现场核验的写「待核实」。',
+  ];
+
+  if (cases.length) {
+    lines.push('相关案例：');
+    for (const entry of cases) lines.push(...formatKnowledgeCase(entry));
+  }
+  if (rules.length) {
+    lines.push('相关条件化经验规则（分析推论，非规范条文）：');
+    for (const entry of rules) {
+      const parts = [
+        entry.condition ? `当：${entry.condition}` : '',
+        entry.action ? `做：${entry.action}` : '',
+        entry.exception ? `例外：${entry.exception}` : '',
+      ].filter(Boolean);
+      lines.push(`- ${entry.id} ${entry.title}（${parts.join('；')}）`);
+    }
+  }
+
+  return {
+    text: lines.join('\n'),
+    caseIds: cases.map((entry) => entry.id),
+    ruleIds: rules.map((entry) => entry.id),
+  };
+}
+
+/** 检索并组装本轮的知识库参考块（导出供单测直接验证提示词内容）。 */
+export async function retrieveAssistantKnowledge(body: ChatRequestBody): Promise<KnowledgeBlock | null> {
+  const query = buildKnowledgeQuery(body);
+  if (query.trim().length < 4) return null;
+  try {
+    const [cases, rules] = await Promise.all([
+      searchKnowledge(query, KNOWLEDGE_CASE_LIMIT, {
+        kind: 'case',
+        minScore: KNOWLEDGE_MIN_SCORE,
+        minTerms: KNOWLEDGE_MIN_TERMS,
+      }),
+      searchRules(query, KNOWLEDGE_RULE_LIMIT, {
+        minScore: KNOWLEDGE_MIN_SCORE,
+        minTerms: KNOWLEDGE_MIN_TERMS,
+      }),
+    ]);
+    return formatKnowledge([...cases, ...rules]);
+  } catch {
+    // 知识库是增强项：检索失败不阻断对话。
+    return null;
+  }
+}
+
+/** 组装【工作台操作】段：<workspace-actions> 协议说明 + 依当前上下文动态生成的可用动作清单。 */
+function buildActionsSection(body: ChatRequestBody): string {
+  const context = body.context;
+  const flow = context?.flow;
+  const project = context?.project;
+
+  const planSummaries = (project?.planSummaries ?? []).filter((item) =>
+    clean(item?.title),
+  );
+  const planList = planSummaries.length
+    ? planSummaries.map((item, index) => `${index + 1}. ${clean(item.title)}`).join('；')
+    : '';
+
+  const actions: string[] = [];
+  actions.push(
+    '- navigate {panel}：切换板块。panel ∈ home|workspace|archive|debug|plans',
   );
 
+  const fillable = (flow?.fillableFields ?? []).filter((item) => clean(item?.key));
+  actions.push(
+    `- update_project {patch:{fields:{键:值}}}：回填档案字段。只写用户本轮明确给出的字段，键必须是下面列出的可回填空字段：${fillable.length ? fillable.map((item) => `${clean(item.key)}=${clean(item.label)}`).join('、') : '（当前没有可回填的空字段，不要输出此动作）'}`,
+  );
+
+  if (flow?.archiveReady && !flow?.debugConfirmed) {
+    actions.push(
+      '- update_debug {patch:{debugEntry:"confirmed"}}：确认档案无误，正式进入调试阶段（通常与 navigate {panel:"debug"} 一起输出）',
+    );
+  }
+
+  if (project) {
+    const photoCount =
+      typeof project.photoCount === 'number' ? project.photoCount : 0;
+    actions.push(
+      `- run_elder_test {persona_ids?, photo_index?, task?}：打开老人视角测试并自动开跑（缺省全选老人角色、用图片库第 1 张照片）。${photoCount ? `当前图片库有 ${photoCount} 张影像。` : '注意：当前图片库为空，跑测试前需先有项目照片。'}`,
+    );
+  }
+
+  actions.push(
+    '- create_plan {plan:{title, body, ...}}：把分析/讨论稿生成方案并存入方案区（会自动切换过去）',
+  );
+
+  if (planList) {
+    actions.push(
+      `- select_plan {plan_index}：切换查看第几个方案（从 1 起）。现有方案：${planList}`,
+    );
+    actions.push('- set_current_plan {plan_index}：把第几个方案设为当前方案');
+  }
+
+  return [
+    '【工作台操作】',
+    '你可以通过 <workspace-actions>[...]</workspace-actions> 块直接操作工作台界面。块内是严格 JSON 数组，每个元素是一个动作对象（type + 参数字段），例如：',
+    '<workspace-actions>[{"type":"run_elder_test","photo_index":0}]</workspace-actions>',
+    '硬性规则：凡是你在正文里说「已帮你/我来/正在做」的界面操作（切板块、确认进入调试、跑测试、生成或切换方案、回填字段），都必须同时在动作块里给出对应动作——**只说不做视为失败**；没有界面操作意图时不要输出块。',
+    '正文照常写给用户看，动作块不展示、不要在正文复述；动作按执行顺序排列；清单里没有的动作不要输出。',
+    '当前可用动作：',
+    ...actions,
+  ].join('\n');
+}
+
+function buildPrompt(
+  body: ChatRequestBody,
+  knowledge?: KnowledgeBlock | null,
+  includeActionInstructions = true,
+): string {
+  const messages = normalizeMessages(body.messages);
   const latest = messages[messages.length - 1];
   const question = clean(latest?.text);
   const history = messages.slice(0, -1);
@@ -416,6 +678,14 @@ function buildPrompt(body: ChatRequestBody): string {
 
   const sections: string[] = [];
   if (context) sections.push(`【当前工作区上下文】\n${context}`);
+
+  // OpenAI-compatible text providers receive the dynamic action protocol in
+  // the system message (see buildTextSystemPrompt).  Keeping it out of the
+  // user message prevents providers with automatic image-tool routing from
+  // mistaking words such as “生成/图片” in the protocol for an image request.
+  if (includeActionInstructions) sections.push(buildActionsSection(body));
+
+  if (knowledge?.text) sections.push(knowledge.text);
 
   if (history.length) {
     const transcript = history
@@ -453,14 +723,28 @@ function buildPrompt(body: ChatRequestBody): string {
     sections.push(`【文件内容：${clean(item.name) || '未命名文件'}】\n${content}`);
   }
 
+  sections.push(
+    '【工作台协作规则】\n' +
+      '你的目标是帮助用户形成可执行的建设方案，而不是把对话卡在固定流程。资料不完整时，明确区分“已知”和“待核实”，但仍可基于现有信息先给出讨论稿、方案骨架、优先级和下一步动作；不要因为缺字段而拒绝回答。\n' +
+      '你可以通过末尾的 <workspace-actions> JSON 数组请求工作台动作。只在用户明确表达意图或你正在把本轮结论落入工作台时使用动作；每个动作都必须是高层、可逆、与当前项目相关的操作。支持：navigate（切换板块，panel 为 home/workspace/archive/debug/plans）、update_project（patch 只能包含 name/address/facilities/fields）、update_plan（planId 加 patch，只更新方案文本字段）、create_plan（plan 为完整或部分方案字段）、update_debug（patch 只能包含 debugScenarios/debugEntry）。动作块必须放在回答最后，格式严格为 <workspace-actions>[...]</workspace-actions>，不要在正文解释标签；没有动作时省略。\n' +
+      '当用户只说“帮我做方案”“我什么都没填”或类似目标时，直接根据项目名称、地址、已知设施、老人画像和常见适老化原则产出一份带待核实标注的讨论稿，并用 create_plan 动作写入方案区；不要只回复缺失字段清单。',
+  );
+
   if (!sections.length) return question;
   sections.push(`【用户本轮提问】\n${question}`);
   return sections.join('\n\n');
 }
 
+function buildTextSystemPrompt(body: ChatRequestBody): string {
+  return [assistantPersona(), buildActionsSection(body)]
+    .filter((part) => part.trim())
+    .join('\n\n');
+}
+
 /** 组装发给 CLI 的 stream-json 用户消息内容块。 */
 function buildUserBlocks(
   body: ChatRequestBody,
+  knowledge?: KnowledgeBlock | null,
 ): Array<Record<string, unknown>> {
   const blocks: Array<Record<string, unknown>> = [];
   const attachments = normalizeAttachments(body.attachments);
@@ -468,7 +752,7 @@ function buildUserBlocks(
     (item) => clean(item.kind) === 'image' && typeof item.data === 'string' && item.data,
   );
 
-  const prompt = buildPrompt(body);
+  const prompt = buildPrompt(body, knowledge);
   if (prompt) {
     blocks.push({ type: 'text', text: prompt });
   } else if (images.length) {
@@ -490,16 +774,92 @@ function buildUserBlocks(
   return blocks;
 }
 
+/**
+ * CodeBuddy 偶尔会完成正文却漏掉动作标签。只对用户明确表达的导航/产出方案
+ * 意图做安全兜底，动作仍然经过前端白名单执行；不从正文猜测档案字段或删除操作。
+ */
+function inferActionBlock(body: ChatRequestBody, responseText: string): string {
+  const latest = normalizeMessages(body.messages).at(-1);
+  const question = clean(latest?.text).replace(/\s+/g, '');
+  if (!question) return '';
+
+  const panel = question.includes('方案')
+    ? 'plans'
+    : question.includes('调试') || question.includes('场景')
+      ? 'debug'
+      : question.includes('档案') || question.includes('建档')
+        ? 'archive'
+        : null;
+  const actions: Record<string, unknown>[] = [];
+  if (panel && /(切到|切换到|去|打开|进入|回到|跳到)/.test(question)) {
+    actions.push({ type: 'navigate', panel });
+  }
+
+  const wantsPlan =
+    /(生成|做一份|产出|制定|设计|规划|建设方案|改造方案|讨论稿|直接帮我)/.test(
+      question,
+    ) && /方案|改造|建设|规划/.test(question);
+  const visibleText = responseText
+    .replace(/<workspace-actions>[\s\S]*?<\/workspace-actions>/g, '')
+    .replace(/<archive-fill>[\s\S]*?<\/archive-fill>/g, '')
+    .trim();
+  if (wantsPlan && visibleText.length >= 80) {
+    const refining = /(优化|修改|补充|完善|调整|改写)/.test(question);
+    actions.push(
+      refining && (body.context?.project?.planCount ?? 0) > 0
+        ? { type: 'update_plan', patch: { body: visibleText } }
+        : {
+            type: 'create_plan',
+            plan: {
+              title: 'AI 适老化建设讨论稿',
+              body: visibleText,
+              verification: '现场尺度、权属、排水、照度、消防与施工条件待核实。',
+            },
+          },
+    );
+  }
+
+  return actions.length
+    ? `<workspace-actions>${JSON.stringify(actions)}</workspace-actions>`
+    : '';
+}
+
+function emitInferredAction(body: ChatRequestBody, responseText: string, emit: (text: string) => void) {
+  if (responseText.includes('<workspace-actions>')) return;
+  const block = inferActionBlock(body, responseText);
+  if (block) emit(`\n\n${block}`);
+}
+
 /** 在 fastify 上以 SSE 方式执行一次对话（reply.hijack 后直接写原始响应）。 */
 async function handleChat(app: FastifyInstance, body: ChatRequestBody, raw: import('node:http').ServerResponse) {
   const res = raw;
 
   const writeEvent = (payload: StreamPayload) => {
-    if (res.writableEnded) return;
+    if (res.writableEnded || res.destroyed) return;
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
 
-  const blocks = buildUserBlocks(body);
+  let chatImages: { mime: string; bytes: Buffer }[];
+  try {
+    chatImages = parseAssistantImages(body.attachments);
+  } catch (error) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    writeEvent({
+      type: 'error',
+      code: error instanceof TextAIError ? error.code : 'ATTACHMENT_INVALID',
+      message: error instanceof Error ? error.message : '图片附件无效，请重新添加后再试。',
+    });
+    res.end();
+    return;
+  }
+
+  const knowledge = await retrieveAssistantKnowledge(body);
+  const blocks = buildUserBlocks(body, knowledge);
   if (!blocks.length) {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
@@ -513,6 +873,72 @@ async function handleChat(app: FastifyInstance, body: ChatRequestBody, raw: impo
       message: '请输入要咨询的内容',
     });
     res.end();
+    return;
+  }
+
+  let textConfig;
+  try {
+    textConfig = getTextAIConfig();
+  } catch (error) {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    writeEvent({
+      type: 'error',
+      code: error instanceof TextAIError ? error.code : 'CONFIG_INVALID',
+      message: error instanceof Error ? error.message : '文本 AI 配置无效。',
+    });
+    res.end();
+    return;
+  }
+
+  if (textConfig.provider === 'openai-compatible') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    const controller = new AbortController();
+    let streamedText = '';
+    let settled = false;
+    const finish = (payload: StreamPayload) => {
+      if (settled) return;
+      settled = true;
+      writeEvent(payload);
+      if (!res.writableEnded && !res.destroyed) res.end();
+    };
+    const abortOnDisconnect = () => {
+      if (!res.writableEnded) controller.abort();
+    };
+    res.on('close', abortOnDisconnect);
+    writeEvent({ type: 'status', status: 'connecting' });
+    try {
+      await streamTextAI(
+        buildPrompt(body, knowledge, false),
+        chatImages,
+        controller.signal,
+        (delta) => {
+          streamedText += delta;
+          writeEvent({ type: 'delta', text: delta });
+        },
+        buildTextSystemPrompt(body),
+      );
+      emitInferredAction(body, streamedText, (text) => writeEvent({ type: 'delta', text }));
+      finish({ type: 'done' });
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      finish({
+        type: 'error',
+        code: error instanceof TextAIError ? error.code : 'MODEL_ERROR',
+        message: error instanceof Error ? error.message : 'AI 调用失败，请稍后重试。',
+      });
+    } finally {
+      res.off('close', abortOnDisconnect);
+    }
     return;
   }
 
@@ -757,6 +1183,7 @@ async function handleChat(app: FastifyInstance, body: ChatRequestBody, raw: impo
         gate = 'open';
         emitText(result);
       }
+      emitInferredAction(body, streamedText || result, emitText);
       finish({ type: 'done', sessionId, turns });
       return;
     }
@@ -823,6 +1250,7 @@ async function handleChat(app: FastifyInstance, body: ChatRequestBody, raw: impo
       return;
     }
 
+    emitInferredAction(body, streamedText, emitText);
     finish({ type: 'done', sessionId, turns });
   });
 
@@ -839,11 +1267,48 @@ async function handleChat(app: FastifyInstance, body: ChatRequestBody, raw: impo
 /** 在 fastify 上注册协作区 AI 路由（status + chat SSE）。 */
 export function registerAssistant(app: FastifyInstance) {
   app.get('/api/v1/assistant/status', async () => {
-    const cliEntry = resolveCliEntry();
+    let textAI: {
+      provider: 'openai-compatible' | 'codebuddy' | null;
+      protocol: 'responses' | 'chat-completions' | null;
+      configured: boolean;
+      available: boolean;
+      model: string | null;
+    };
+    try {
+      const config = getTextAIConfig();
+      const cliEntry = config.provider === 'codebuddy' ? resolveCliEntry() : null;
+      const configured = config.provider === 'codebuddy' ? Boolean(cliEntry) : config.configured;
+      textAI = {
+        provider: config.provider,
+        protocol: config.provider === 'openai-compatible' ? config.protocol : null,
+        configured,
+        // This is local configuration readiness, not a live provider health check.
+        available: configured,
+        model: config.provider === 'codebuddy'
+          ? (process.env.CODEBUDDY_MODEL?.trim() || 'deepseek-v4-flash')
+          : config.model,
+      };
+    } catch {
+      textAI = {
+        provider: null,
+        protocol: null,
+        configured: false,
+        available: false,
+        model: null,
+      };
+    }
+    const image = imageGenConfig();
+    const imageConfigured = imageGenAvailable();
     return {
-      available: Boolean(cliEntry),
-      cliPath: cliEntry ?? null,
-      version: cliEntry ? (readCliVersion(cliEntry) ?? null) : null,
+      available: textAI.available,
+      textAI,
+      imageGen: {
+        executor: image.executor,
+        configured: imageConfigured,
+        available: imageConfigured,
+        model: image.model,
+        count: image.count,
+      },
     };
   });
 
@@ -852,5 +1317,48 @@ export function registerAssistant(app: FastifyInstance) {
     reply.hijack();
     const body = (req.body ?? {}) as ChatRequestBody;
     await handleChat(app, body, reply.raw);
+  });
+
+  // AI 效果图：多版采样生成（现状照片 + 设计要求 → N 版概念效果图）。
+  // 未配置生图模型时返回 configured:false 与配置指引，前端据此降级提示。
+  app.post('/api/v1/assistant/render', async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      photos?: { mime?: string; base64?: string }[];
+      prompt?: string;
+      count?: number;
+    };
+    if (!imageGenAvailable()) {
+      return await reply.code(200).send({ configured: false, guide: imageGenGuide() });
+    }
+    const first = (body.photos ?? []).find(p => p.base64);
+    const reference = first ? { mime: first.mime ?? 'image/png', base64: first.base64! } : null;
+    const base = (body.prompt ?? '').trim();
+    if (!base) return await reply.code(400).send({ error: '缺少设计要求（prompt）' });
+    const controller = new AbortController();
+    const abortOnDisconnect = () => {
+      if (!reply.raw.writableEnded) controller.abort();
+    };
+    reply.raw.on('close', abortOnDisconnect);
+    try {
+      const images = await generateImages({
+        prompt: base,
+        reference,
+        count: Math.min(6, Math.max(1, Number(body.count) || imageGenConfig().count)),
+        signal: controller.signal,
+      });
+      return await reply.code(200).send({
+        configured: true,
+        images: images.map(im => ({ mime: im.mime, base64: im.base64 })),
+      });
+    } catch (e) {
+      if (controller.signal.aborted && (reply.raw.destroyed || !reply.raw.writable)) return;
+      const message = e instanceof Error ? e.message : '效果图生成失败，请稍后重试';
+      const isInputError = /缺少设计要求|不能超过|格式仅支持|数据格式无效/.test(message);
+      return await reply.code(isInputError ? 400 : 502).send({
+        error: message,
+      });
+    } finally {
+      reply.raw.off('close', abortOnDisconnect);
+    }
   });
 }

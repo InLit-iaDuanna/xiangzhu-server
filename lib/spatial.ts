@@ -11,9 +11,11 @@ export type Building = Point & {id:string;name:string;w:number;h:number;kind:str
 export type BlueprintRecord = {result:unknown;model:string;time:string;materialId?:string};
 export type Hazard = Point & {id:string;road:string;kind:string;environment:string;status:string;note:string;photo?:string;source:string};
 export type Facility = Point & {name:string;size:'小'|'中'|'大';angle:number};
+// 选址测试候选点位：用户在地图上标记的多处候选，一键交给 AI 比选出最佳选址。
+export type FacilityCandidate = Point & {id:string;name:string;size:'小'|'中'|'大'};
 export type LayoutItem = Point & {id:string;kind:string};
 export type Config = {role:string;vision:string;familiarity:string;carrying:string;environment:string;start:string;end:string;habit:string[]};
-export type Snapshot = {imageSize?:ImageSize;id:string;name:string;time:string;actor:string;reason:string;nodes:Node[];roads:Road[];buildings:Building[];hazards:Hazard[];facility:Facility|null;config:Config;image:string;scale:number;resources?:{id:string;node_id:string;kind:'seat'|'meal';capacity:number|null;opens:number|null;closes:number|null;duration:number|null;source:string}[];calibration?:{status:'unknown'|'demo'|'manual'|'verified';source:string;unit:'m';scaleY?:number};layout:LayoutItem[];goal:string;budget:string;preserve:string;version:number;blueprint?:BlueprintRecord};
+export type Snapshot = {imageSize?:ImageSize;id:string;name:string;time:string;actor:string;reason:string;nodes:Node[];roads:Road[];buildings:Building[];hazards:Hazard[];facility:Facility|null;facilityCandidates?:FacilityCandidate[];config:Config;image:string;scale:number;resources?:{id:string;node_id:string;kind:'seat'|'meal';capacity:number|null;opens:number|null;closes:number|null;duration:number|null;source:string}[];calibration?:{status:'unknown'|'demo'|'manual'|'verified';source:string;unit:'m';scaleY?:number};layout:LayoutItem[];goal:string;budget:string;preserve:string;version:number;blueprint?:BlueprintRecord};
 export type Spatial = Omit<Snapshot,'id'|'name'|'time'|'actor'|'reason'> & {mode:'empty'|'demo'|'upload';locationConfirmed:boolean;address:string;crs:string;history:Snapshot[];audit:{time:string;actor:string;action:string;before:string;after:string}[]};
 export type RouteResult = {nodes:string[];roads:string[];length:number|null;cost:number;events:{road:string;kind:string;category:string;severity:string;source:string;advice:string}[];unknown:number;reachable:boolean};
 export const RULE_VERSION='demo-rules-1.0';

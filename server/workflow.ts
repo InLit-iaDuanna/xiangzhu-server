@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { streetFinding } from '../lib/v2/street';
-import { searchKnowledge } from './knowledge';
+import { searchKnowledge, searchRules } from './knowledge';
 import {
   StateGraph,
   Annotation,
@@ -293,7 +293,7 @@ export function buildWorkflow(
         'proposal',
         {
           base_version: 0,
-          source: 'CodeBuddy 草案；待独立复核',
+          source: 'AI 草案；待独立复核',
           data: { ...reply.proposal, status: 'draft' },
         },
       );
@@ -390,7 +390,7 @@ export async function processRun(
       );
       if (!finding.image_readable)
         throw new Error(
-          '视觉执行器未能读取照片，请检查 CodeBuddy 视觉模型配置后重试',
+          '所选 AI 模型未能读取照片，请检查 provider 配置、模型图像输入能力与图片格式后重试',
         );
       const visit = { photo_id: id, position: photo.data, ...finding };
       visits.push(visit);
@@ -462,6 +462,8 @@ export async function processRun(
           ),
         },
       ],
+      // 转译专用模型：影像识别质量优先（kimi-k3），其余 AI 调用仍用全局 CODEBUDDY_MODEL。
+      process.env.CODEBUDDY_BLUEPRINT_MODEL,
     );
     if (!result.image_readable)
       throw new Error(
@@ -491,8 +493,172 @@ export async function processRun(
     );
     return;
   }
+  if (run.type === 'site-selection') {
+    // 选址测试（V3）：用户在地图标记多个候选点位 → AI 综合场景上下文比选，给出最佳选址与理由。
+    const candidates = Array.isArray(run.input.candidates)
+      ? run.input.candidates
+      : [];
+    if (!candidates.length) throw new Error('缺少候选点位');
+    const siteSchema = z.object({
+      best_id: z.string().describe('最佳候选点位的 id，必须来自候选列表'),
+      summary: z.string().max(600).describe('一句话结论：为什么这个点位最合适'),
+      reasoning: z
+        .string()
+        .max(2000)
+        .describe('展开理由：可达性、覆盖、风险、空间关系等，务实不编造'),
+      comparison: z
+        .array(
+          z.object({
+            id: z.string(),
+            pros: z.string().max(300).describe('该点位的主要优点'),
+            cons: z.string().max(300).describe('该点位的主要不足'),
+          }),
+        )
+        .max(12)
+        .describe('逐个候选的优缺点对比'),
+    });
+    const receipt = async (info: any) => {
+      await db.query(
+        'INSERT INTO run_events(run_id,stage,payload) VALUES($1,$2,$3)',
+        [run.id, 'cli_receipt', JSON.stringify(info)],
+      );
+    };
+    await db.query("UPDATE runs SET status='analyzing' WHERE id=$1", [run.id]);
+    const result = await execute(
+      configuredExecutor(),
+      {
+        task: '乡村适老化设施选址比选：从用户标记的候选点位中选出最佳选址并给出理由',
+        facility: {
+          name: String(run.input.facility_name ?? '候选设施'),
+          size: String(run.input.facility_size ?? '小'),
+        },
+        candidates,
+        scene: run.input.scene ?? {},
+        rules: [
+          '评估维度（按重要性）：①老人居住点到候选点的可达距离与路网接入；②服务覆盖的老人人数；③与道路通行空间的关系（是否占路、是否便于接入）；④周边风险点（积水/楼梯/湿滑等）；⑤日照、遮荫等环境因素。',
+          '候选坐标为图像坐标，scene.scale 为米/图像单位，可用 scene 中 nodes/roads/buildings 计算距离与覆盖。',
+          'best_id 必须来自候选列表的 id；理由要具体到数值（如覆盖人数、距离米数），不确定的信息明确标注「待核实」，不要编造。',
+        ].join('\n'),
+      },
+      siteSchema,
+      signal,
+      true,
+      receipt,
+    );
+    await db.query(
+      "UPDATE runs SET status='completed',result=$1,updated_at=now() WHERE id=$2 AND NOT cancel_requested",
+      [JSON.stringify(result), run.id],
+    );
+    return;
+  }
+  if (run.type === 'route-analysis') {
+    // 路径测试模式 A：用户在地图标记起终点 → AI 分析该路径上的适老化问题与改善建议。
+    const routeSchema = z.object({
+      summary: z.string().max(600).describe('一句话结论：这条路径的适老化状况'),
+      problems: z
+        .array(
+          z.object({
+            location: z.string().max(120).describe('问题所在位置，如节点名/路段/坐标'),
+            issue: z.string().max(300).describe('具体适老化问题'),
+            suggestion: z.string().max(300).describe('针对该问题的改善建议'),
+          }),
+        )
+        .max(20)
+        .describe('沿路径发现的问题清单'),
+      improvements: z
+        .array(z.string().max(200))
+        .max(12)
+        .describe('整体改善建议（不必逐条对应问题）'),
+    });
+    const receipt = async (info: any) => {
+      await db.query(
+        'INSERT INTO run_events(run_id,stage,payload) VALUES($1,$2,$3)',
+        [run.id, 'cli_receipt', JSON.stringify(info)],
+      );
+    };
+    await db.query("UPDATE runs SET status='analyzing' WHERE id=$1", [run.id]);
+    const result = await execute(
+      configuredExecutor(),
+      {
+        task: '乡村适老化路径分析：分析用户标记的起终点路径上的适老化问题与可改善建议',
+        start: run.input.start,
+        end: run.input.end,
+        config: run.input.config ?? {},
+        routes: run.input.routes ?? {},
+        scene: run.input.scene ?? {},
+        rules: [
+          '评估维度：①路径可达性与连续性（是否断头/绕远）；②路面宽度与台阶风险（轮椅/助行器能否通过）；③照明与夜间安全；④沿途休息点/遮荫覆盖；⑤与老人居住点/公共设施的接入便利性。',
+          'problems 每条要具体到位置（节点名或路段），issue 描述实际不适老的表现，suggestion 给出可落地的改善动作。',
+          '不确定的信息标注「待核实」，不编造测量数据。',
+        ].join('\n'),
+      },
+      routeSchema,
+      signal,
+      true,
+      receipt,
+    );
+    await db.query(
+      "UPDATE runs SET status='completed',result=$1,updated_at=now() WHERE id=$2 AND NOT cancel_requested",
+      [JSON.stringify(result), run.id],
+    );
+    return;
+  }
+  if (run.type === 'npc-walk') {
+    // 路径测试模式 B：AI NPC 在场景路网上随机走访多轮 → 综合分析村庄布局问题与改善建议。
+    const npcSchema = z.object({
+      summary: z.string().max(600).describe('一句话结论：村庄路网布局的整体状况'),
+      layout_issues: z
+        .array(
+          z.object({
+            area: z.string().max(120).describe('问题区域，如某片住宅/某条主路/某节点'),
+            problem: z.string().max(300).describe('布局层面的适老化问题'),
+            suggestion: z.string().max(300).describe('针对该区域的改善建议'),
+          }),
+        )
+        .max(20)
+        .describe('村庄布局问题清单'),
+      improvement_suggestions: z
+        .array(z.string().max(200))
+        .max(12)
+        .describe('整体可改善建议（如需补多少路、增设休息点等）'),
+    });
+    const receipt = async (info: any) => {
+      await db.query(
+        'INSERT INTO run_events(run_id,stage,payload) VALUES($1,$2,$3)',
+        [run.id, 'cli_receipt', JSON.stringify(info)],
+      );
+    };
+    await db.query("UPDATE runs SET status='analyzing' WHERE id=$1", [run.id]);
+    const result = await execute(
+      configuredExecutor(),
+      {
+        task: '乡村适老化村庄布局分析：模拟 AI NPC 在村庄路网上随机走访多轮，综合分析布局问题与改善建议',
+        config: run.input.config ?? {},
+        scene: run.input.scene ?? {},
+        rules: [
+          '评估维度：①路网连通性与断头路（是否有老人难以到达的区域）；②主路与巷道的宽度梯度；③公共设施（公厕/活动中心/助餐点）的服务覆盖；④风险点（积水/楼梯/湿滑）的分布密度；⑤休息点/遮荫的覆盖间隔。',
+          'layout_issues 要按区域归纳，problem 描述布局层面的不适老表现（非单条路问题），suggestion 给出可落地的改善方向。',
+          'improvement_suggestions 给出整体建议（如「西侧住宅区需增设 2-3 处休息点」「环村路需补一段连接」），不确定的标注「待核实」。',
+        ].join('\n'),
+      },
+      npcSchema,
+      signal,
+      true,
+      receipt,
+    );
+    await db.query(
+      "UPDATE runs SET status='completed',result=$1,updated_at=now() WHERE id=$2 AND NOT cancel_requested",
+      [JSON.stringify(result), run.id],
+    );
+    return;
+  }
   if (run.type === 'consultation') {
-    const sources = await searchKnowledge(run.input.instruction, 5);
+    // 咨询同时检索案例与条件化规则（知识库见 server/knowledge.ts，来源 knowledge/）。
+    const [cases, rules] = await Promise.all([
+      searchKnowledge(run.input.instruction, 5, { kind: 'case', minTerms: 2 }),
+      searchRules(run.input.instruction, 3, { minTerms: 2 }),
+    ]);
+    const sources = [...cases, ...rules];
     const receipt = async (info: any) => {
       await db.query(
         'INSERT INTO run_events(run_id,stage,payload) VALUES($1,$2,$3)',

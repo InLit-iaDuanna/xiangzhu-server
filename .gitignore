@@ -2,23 +2,40 @@
 /node_modules
 /.pnp
 .pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# build & cache
+# testing
+/coverage
+
+# next.js
+/.next/
+/.vinext/
+/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local environment
+.env*
+.dev.vars
+
+# deployment and generated files
+.vercel
+next-env.d.ts
 /dist/
-*.tsbuildinfo
-
-# runtime data（材料库 / pglite 数据 / 知识库均为运行时生成）
+/.wrangler/
+/outputs/
 /work/
 
-# local environment & secrets
-.env
-.env.*
-!.env.example
-
-# macOS resource forks
-._*
-.DS_Store
-
-# logs & temp
-*.log
-tmp/
+*.tsbuildinfo

@@ -154,27 +154,27 @@ export function computeWorkspaceFlow(
       nextActionLabel = '先补上村庄地址';
       break;
     case 'fields': {
-      const parts = [`档案信息还缺 ${missingFields.length} 项`];
+      const parts = [`档案信息还缺 ${missingFields.length} 项，可边补充边产出方案`];
       if (missingSlots.length) {
         parts.push(`图片库还缺 ${missingSlots.length} 类影像`);
       }
-      nextActionLabel = `先补齐建档：${parts.join('，')}`;
+      nextActionLabel = `档案完善建议：${parts.join('，')}`;
       break;
     }
     case 'photos':
-      nextActionLabel = `补齐图片库，还缺 ${missingSlots.length} 类影像`;
+      nextActionLabel = `可先产出讨论稿，再补齐图片库（还缺 ${missingSlots.length} 类影像）`;
       break;
     case 'align-debug':
-      nextActionLabel = '档案已齐备，对齐待核疑点后进入调试';
+      nextActionLabel = '可对齐待核疑点，也可以直接让 AI 先形成方案';
       break;
     case 'debug-pending':
       nextActionLabel = '已确认进入调试，等待接入调试分析';
       break;
     case 'debug':
-      nextActionLabel = '先完成调试分析';
+      nextActionLabel = '可整理调试信息，也可以直接进入方案讨论';
       break;
     case 'confirm-plan':
-      nextActionLabel = '由你在对话中确认方案后转入方案工作区';
+      nextActionLabel = '可在方案区继续修改，也可以让 AI 直接生成讨论稿';
       break;
     default:
       nextActionLabel = '在方案工作区修改与比对';

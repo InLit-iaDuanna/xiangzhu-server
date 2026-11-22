@@ -1,0 +1,47 @@
+{
+  "title": "乡村与公共空间适老化参考库：新增100条（配图未齐）",
+  "as_of": "2026-09-09",
+  "requested_minimum": 1001,
+  "delivered_new_case_cards": 100,
+  "previous_batch_records_not_counted": 100,
+  "request_fulfilled": false,
+  "scope_statement": "47条国内乡村核心，另有国内城乡/城市与国外迁移参考；不是100条适老效果实证",
+  "countries": {
+    "中国": 88,
+    "新加坡": 10,
+    "意大利": 1,
+    "斯洛文尼亚": 1
+  },
+  "scope_groups": {
+    "国内乡村核心": 47,
+    "国内城乡及城市迁移": 41,
+    "国外城市迁移": 10,
+    "国外村镇": 2
+  },
+  "evidence_levels": {
+    "A": 76,
+    "B": 24
+  },
+  "known_publication_2024_2026": 30,
+  "unknown_publication_year": 28,
+  "cases_with_remote_image_urls": 26,
+  "remote_image_url_count": 26,
+  "cases_with_at_least_one_visually_reviewed_image": 2,
+  "downloaded_image_count": 0,
+  "fully_cleared_multimodal_training_cases": 0,
+  "source_records": 102,
+  "case_family_count": 89,
+  "dedup_checks": {
+    "within_new_exact_source_duplicates": 0,
+    "with_previous_exact_source_duplicates": 0,
+    "name_and_location_review": "仅发现同镇不同项目：P0010双祥实验室与R069金泽镇住宅改造；非同一项目"
+  },
+  "limitations": [
+    "未达到1000+条",
+    "未给每条案例配齐图片；没有离线项目照片",
+    "A仅为正文片段读取，B为摘要/元数据；全部需复核",
+    "源图片训练许可均未确认",
+    "适老迁移分析不是原项目的独立实证成效",
+    "未提供缺失的精确尺寸、成本与量化效果"
+  ]
+}

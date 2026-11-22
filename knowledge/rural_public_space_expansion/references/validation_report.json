@@ -1,0 +1,21 @@
+{
+  "new_cases": 100,
+  "countries": {
+    "中国": 88,
+    "新加坡": 10,
+    "意大利": 1,
+    "斯洛文尼亚": 1
+  },
+  "cases_with_remote_image_urls": 26,
+  "cases_with_visually_reviewed_image": 2,
+  "downloaded_images": 0,
+  "case_family_count": 89,
+  "request_fulfilled": false,
+  "structural_errors": [],
+  "unresolved": [
+    "not 1000+ cases",
+    "images not complete",
+    "manual factual review incomplete",
+    "image training rights unconfirmed"
+  ]
+}

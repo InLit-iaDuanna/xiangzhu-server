@@ -1,8 +1,8 @@
 /**
  * 协作区 AI 的前端调用层。
  *
- * 请求经由开发服务器中间件 `/api/assistant` 转发给本机 CodeBuddy CLI，
- * 服务端以 SSE 逐段回推文本，这里负责解析并回调给界面。
+ * 请求经由 `/api/v1/assistant/chat` 到服务端，按统一 provider 配置调用 API
+ * 或显式选择的 CodeBuddy，并以 SSE 逐段回推文本。
  */
 
 import {
@@ -13,10 +13,26 @@ import {
 
 export type AssistantTurn = { role: 'user' | 'assistant'; text: string };
 
+export type AssistantTextAIStatus = {
+  provider: 'openai-compatible' | 'codebuddy' | null;
+  protocol: 'responses' | 'chat-completions' | null;
+  configured: boolean;
+  available: boolean;
+  model: string | null;
+};
+
+export type AssistantImageGenStatus = {
+  executor: 'openai-compatible' | 'hunyuan' | null;
+  configured: boolean;
+  available: boolean;
+  model: string | null;
+  count: number;
+};
+
 export type AssistantStatus = {
   available: boolean;
-  cliPath: string | null;
-  version: string | null;
+  textAI: AssistantTextAIStatus;
+  imageGen: AssistantImageGenStatus;
 };
 
 export type AssistantProjectContext = {
@@ -29,6 +45,8 @@ export type AssistantProjectContext = {
   debugScenarioCount?: number;
   debugRunCount?: number;
   planCount?: number;
+  /** 现有方案摘要（序号从 1 起，供 plan.open / plan.setCurrent 引用）。 */
+  planSummaries?: { index?: number; title?: string }[];
   fields?: Record<string, string>;
 };
 
@@ -136,6 +154,7 @@ export const ATTACHMENT_ACCEPT =
 
 export const MAX_ATTACHMENT_COUNT = 8;
 export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+export const MAX_TOTAL_IMAGE_ATTACHMENT_BYTES = 24 * 1024 * 1024;
 
 export type DraftAttachment = {
   id: string;
@@ -252,17 +271,48 @@ const ENDPOINT = '/api/v1/assistant';
 export async function getAssistantStatus(
   signal?: AbortSignal,
 ): Promise<AssistantStatus> {
+  const unavailable: AssistantStatus = {
+    available: false,
+    textAI: {
+      provider: null,
+      protocol: null,
+      configured: false,
+      available: false,
+      model: null,
+    },
+    imageGen: {
+      executor: null,
+      configured: false,
+      available: false,
+      model: null,
+      count: 0,
+    },
+  };
   try {
     const response = await fetch(`${ENDPOINT}/status`, { signal });
-    if (!response.ok) return { available: false, cliPath: null, version: null };
+    if (!response.ok) return unavailable;
     const data = (await response.json()) as Partial<AssistantStatus>;
+    const textAI = data.textAI ?? unavailable.textAI;
+    const imageGen = data.imageGen ?? unavailable.imageGen;
     return {
       available: Boolean(data.available),
-      cliPath: data.cliPath ?? null,
-      version: data.version ?? null,
+      textAI: {
+        provider: textAI.provider ?? null,
+        protocol: textAI.protocol ?? null,
+        configured: Boolean(textAI.configured),
+        available: Boolean(textAI.available),
+        model: textAI.model ?? null,
+      },
+      imageGen: {
+        executor: imageGen.executor ?? null,
+        configured: Boolean(imageGen.configured),
+        available: Boolean(imageGen.available),
+        model: imageGen.model ?? null,
+        count: Number(imageGen.count) || 0,
+      },
     };
   } catch {
-    return { available: false, cliPath: null, version: null };
+    return unavailable;
   }
 }
 
@@ -298,6 +348,80 @@ export function parseArchiveFill(text: string): Record<string, string> {
   }
 }
 
+/**
+ * AI 可执行的工作台动作。动作仍然由前端做白名单校验并落入既有文档保存链路，
+ * 因此模型只能请求工作台允许的高层操作，不能直接执行任意代码或访问文件系统。
+ */
+export type WorkspaceAction = {
+  type:
+    | 'navigate'
+    | 'update_project'
+    | 'update_plan'
+    | 'create_plan'
+    | 'update_debug'
+    | 'select_plan'
+    | 'set_current_plan'
+    | 'run_elder_test';
+  panel?: 'home' | 'workspace' | 'archive' | 'debug' | 'plans';
+  planId?: string;
+  /** 方案序号，从 1 起（对应上下文里"现有方案"列表）。 */
+  plan_index?: number;
+  /** 老人视角测试：角色 id 列表，缺省=全部角色。 */
+  persona_ids?: string[];
+  /** 老人视角测试：项目照片序号，从 0 起，缺省=第 1 张。 */
+  photo_index?: number;
+  /** 老人视角测试：任务描述，缺省=标准出行任务。 */
+  task?: string;
+  patch?: Record<string, unknown>;
+  plan?: Record<string, unknown>;
+};
+
+const WORKSPACE_ACTION_PATTERN = /<workspace-actions>([\s\S]*?)(?:<\/workspace-actions>|$)/;
+
+/** 去掉 AI 返回的机器动作块；流式尚未闭合时也不把标签泄漏到正文。 */
+export function stripWorkspaceActions(text: string): string {
+  return text.replace(WORKSPACE_ACTION_PATTERN, '').trimEnd();
+}
+
+/**
+ * CodeBuddy 偶尔会把内部工具调用协议作为普通文本回吐。
+ * 这类 DSML/repl 片段不是给用户看的，必须在消息落地前移除；
+ * 正常正文与工作台动作协议不受影响。
+ */
+const INTERNAL_PROTOCOL_MARKER = /(?:<\s*)?\|\s*DSML\s*\|\s*(?:>|\|)/i;
+
+export function stripAssistantInternalProtocol(text: string): string {
+  const marker = text.search(INTERNAL_PROTOCOL_MARKER);
+  if (marker < 0) return text;
+  return text.slice(0, marker).trimEnd();
+}
+
+/** 解析 AI 返回的动作块；格式错误或未知动作会被安全忽略。 */
+export function parseWorkspaceActions(text: string): WorkspaceAction[] {
+  const match = /<workspace-actions>([\s\S]*?)<\/workspace-actions>/.exec(text);
+  if (!match) return [];
+  try {
+    const parsed = JSON.parse(match[1].trim()) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is WorkspaceAction => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+      const type = (item as { type?: unknown }).type;
+      return (
+        type === 'navigate' ||
+        type === 'update_project' ||
+        type === 'update_plan' ||
+        type === 'create_plan' ||
+        type === 'update_debug' ||
+        type === 'select_plan' ||
+        type === 'set_current_plan' ||
+        type === 'run_elder_test'
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
 export type StreamAssistantOptions = {
   messages: AssistantTurn[];
   context?: AssistantContext;
@@ -316,7 +440,8 @@ export async function streamAssistant(
 
   let response: Response;
   try {
-    response = await fetch(ENDPOINT, {
+    // 对话路由：后端注册在 /api/v1/assistant/chat（status 才挂在 /api/v1/assistant 下）。
+    response = await fetch(`${ENDPOINT}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, context, attachments }),
@@ -350,7 +475,13 @@ export async function streamAssistant(
       .join('');
     if (!data) return;
 
-    let event: { type?: string; text?: string; status?: string | null; code?: string; message?: string };
+    let event: {
+      type?: string;
+      text?: string;
+      status?: string | null;
+      code?: string;
+      message?: string;
+    };
     try {
       event = JSON.parse(data) as typeof event;
     } catch {

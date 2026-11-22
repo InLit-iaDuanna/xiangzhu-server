@@ -1,6 +1,7 @@
 import { registerStreet } from './street';
+import { elderPersonas, elderTest } from './elder';
 import { registerAssistant } from './assistant';
-import { searchKnowledge, knowledgeEntries } from './knowledge';
+import { searchKnowledge, knowledgeEntries, knowledgeStats } from './knowledge';
 import { villageSchema, initializationSchema } from '../lib/v2/village';
 import { registerTencentMap } from './tencent-map';
 import Fastify from 'fastify';
@@ -164,12 +165,14 @@ export async function buildApp(
   });
   registerTencentMap(app);
   registerStreet(app, db, options.storage);
-  // 协作区 AI（V3 统一通道）：与调试台识别共用 fastify，走本机 CodeBuddy CLI。
+  // 协作区 AI 与结构化调试工作流共用服务端文本 AI provider 配置。
   registerAssistant(app);
   app.get('/api/v1/knowledge', async (req) => {
     const q = z.object({ q: z.string().max(300).default('') }).parse(req.query);
     return searchKnowledge(q.q, 30);
   });
+  // 知识库状态（加载条数/目录/缓存时间）：供运维自检，也便于排查"AI 没引用案例"。
+  app.get('/api/v1/knowledge/stats', async () => knowledgeStats());
   app.get('/api/v1/knowledge/:id', async (req) => {
     const e = (await knowledgeEntries()).find(
       (e) => e.id === (req.params as any).id,
@@ -226,6 +229,7 @@ export async function buildApp(
   app.post('/api/v1/projects', async (req) => {
     const b = z
       .object({
+        id: z.string().min(1).max(200).optional(),
         name: z.string().min(1),
         mode: z.enum(['demo', 'reality']),
         spatial: spatialInput.optional(),
@@ -233,16 +237,26 @@ export async function buildApp(
       })
       .parse(req.body);
     const user = (req as any).user;
-    const id = randomUUID();
+    const id = b.id ?? randomUUID();
+    if (b.id) {
+      const existing = await one(
+        db,
+        'SELECT p.id FROM projects p JOIN members m ON m.project_id=p.id WHERE p.id=$1 AND m.user_id=$2',
+        [id, user],
+      );
+      if (existing) return projectContext(db, id);
+      const collision = await one(db, 'SELECT id FROM projects WHERE id=$1', [id]);
+      if (collision) throw new HttpError(409, '项目 ID 已被其他项目使用');
+    }
     const spatial = normalizeSpatial((b.spatial ?? emptySpatial()) as Spatial);
     if (b.mode === 'reality' && spatial.mode === 'demo')
       throw new HttpError(422, '合成资料只能导入演示项目');
     if (b.geographic_location && b.mode !== 'reality')
       throw new HttpError(422, '请将真实村庄保存为真实项目');
     spatial.version = 0;
-    await transaction(db, async (tx) => {
-      await tx.query(
-        'INSERT INTO projects(id,name,mode,spatial,geographic_location,location_version) VALUES($1,$2,$3,$4,$5,$6)',
+    const created = await transaction(db, async (tx) => {
+      const inserted = await tx.query(
+        'INSERT INTO projects(id,name,mode,spatial,geographic_location,location_version) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING RETURNING id',
         [
           id,
           b.name,
@@ -258,6 +272,15 @@ export async function buildApp(
           b.geographic_location ? 1 : 0,
         ],
       );
+      if (!inserted.rows.length) {
+        const member = await one(
+          tx,
+          'SELECT project_id FROM members WHERE project_id=$1 AND user_id=$2',
+          [id, user],
+        );
+        if (!member) throw new HttpError(409, '项目 ID 已被其他项目使用');
+        return false;
+      }
       await tx.query("INSERT INTO members VALUES($1,$2,'manager')", [id, user]);
       await tx.query('INSERT INTO world_versions VALUES($1,0,$2,$3,$4,now())', [
         id,
@@ -265,7 +288,9 @@ export async function buildApp(
         '用户创建',
         user,
       ]);
+      return true;
     });
+    if (!created) return projectContext(db, id);
     if (b.mode === 'demo' && spatial.nodes.length)
       for (const sc of exampleScenarios(spatial))
         await saveRecord(db, user, id, 'scenario', {
@@ -531,6 +556,9 @@ export async function buildApp(
           'consultation',
           'streetwalk',
           'blueprint',
+          'site-selection',
+          'route-analysis',
+          'npc-walk',
         ]),
         photo_ids: z.array(z.string().uuid()).min(1).max(12).optional(),
         material_id: z.string().uuid().optional(),
@@ -540,6 +568,25 @@ export async function buildApp(
         scenario_id: z.string().optional(),
         mode: z.enum(['rules', 'ai']).default('rules'),
         replay_id: z.string().optional(),
+        // 选址测试（site-selection）：用户在地图标记的候选点位 + 场景上下文。
+        facility_name: z.string().max(120).optional(),
+        facility_size: z.enum(['小', '中', '大']).optional(),
+        candidates: z
+          .array(
+            z.object({
+              id: z.string().max(64),
+              x: z.number(),
+              y: z.number(),
+            }),
+          )
+          .max(12)
+          .optional(),
+        scene: z.unknown().optional(),
+        // 路径测试（route-analysis）：地图标记的起终点节点 id；npc-walk 仅需 config/scene。
+        start: z.string().max(64).optional(),
+        end: z.string().max(64).optional(),
+        config: z.unknown().optional(),
+        routes: z.unknown().optional(),
       })
       .parse(req.body);
     const p = await projectContext(db, project);
@@ -565,6 +612,14 @@ export async function buildApp(
         throw new HttpError(422, '影像不存在或未授权模型处理');
       if (!/^image\/(jpeg|png|webp)$/.test(material.mime))
         throw new HttpError(422, '影像识别只支持 JPEG、PNG 或 WebP');
+    }
+    if (b.type === 'site-selection') {
+      if (!b.candidates?.length)
+        throw new HttpError(422, '请先在地图上标记候选点位');
+    }
+    if (b.type === 'route-analysis') {
+      if (!b.start || !b.end)
+        throw new HttpError(422, '请在地图上标记起点与终点');
     }
     if (b.type === 'streetwalk') {
       if (!b.photo_ids || new Set(b.photo_ids).size !== b.photo_ids.length)
@@ -746,6 +801,68 @@ export async function buildApp(
     await audit(db, (req as any).user, project, 'material.withdraw', id);
     return { ok: true };
   });
+
+  // ===== 老人视角测试：调用 elder-workbench（老人视角智能体工作台）=====
+  // 数据原地取用：material_id 直接读项目素材盘文件；前端也可传压缩后的 data URL。
+  const elderTestSchema = z.object({
+    persona_ids: z.array(z.string()).min(1).max(8),
+    task: z
+      .string()
+      .min(1)
+      .max(300)
+      .default(
+        '你现在需要独自在这个空间中完成日常出行。请从你的身体、感知和认知状态出发，指出当前场景中可能影响你的地方。只描述当前输入能够支持的判断，无法确认的信息必须明确标记。',
+      ),
+    material_id: z.string().optional(),
+    data_url: z.string().optional(),
+    text: z.string().max(2000).optional(),
+  });
+  app.get(path + '/elder-personas', async () => ({
+    personas: await elderPersonas(),
+  }));
+  app.post(path + '/elder-test', async (req) => {
+    const p = (req.params as any).project,
+      u = (req as any).user;
+    await authorize(db, u, p, ['recorder', 'analyst', 'manager']);
+    const b = elderTestSchema.parse(req.body);
+    let context: string;
+    let context_type: 'image' | 'text' = 'image';
+    if (b.material_id) {
+      const m = await one(
+        db,
+        "SELECT * FROM materials WHERE project_id=$1 AND id=$2 AND consent='allowed'",
+        [p, b.material_id],
+      );
+      if (!m) throw new HttpError(404, '素材不存在或已撤回');
+      if (!String(m.mime).startsWith('image/'))
+        throw new HttpError(422, '该素材不是图片，无法给老人看');
+      const bytes = await readFile(join(options.storage, m.id));
+      context = `data:${m.mime};base64,${bytes.toString('base64')}`;
+    } else if (b.data_url) {
+      if (!b.data_url.startsWith('data:image/'))
+        throw new HttpError(422, '图片格式不正确（需 data:image/...）');
+      if (b.data_url.length > 12 * 1024 * 1024)
+        throw new HttpError(422, '图片过大，请先压缩后再提交');
+      context = b.data_url;
+    } else if (b.text && b.text.trim()) {
+      context = b.text.trim();
+      context_type = 'text';
+    } else {
+      throw new HttpError(422, '请提供项目照片（material_id / data_url）或文字描述');
+    }
+    const out = await elderTest({
+      persona_ids: b.persona_ids,
+      task: b.task,
+      context_type,
+      context,
+    });
+    await audit(db, u, p, 'elder.test', null, {
+      personas: b.persona_ids,
+      context: context_type,
+    });
+    return out;
+  });
+
   app.get(path + '/export', async (req) => {
     const p = (req.params as any).project,
       u = (req as any).user;

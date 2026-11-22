@@ -1,0 +1,82 @@
+{
+  "html_test": "Chromium DOM render, search 青台=1, image URL filter=26, evidence B=24, no JS errors",
+  "jsonl_records": 100,
+  "fictional_test_prompts": 14,
+  "files": [
+    {
+      "file": "README.md",
+      "bytes": 2833,
+      "sha256": "fd3bce03999be7a74acdfb544ef2f024fda03c0f3cc5a53e0ebbfd8d18db82da"
+    },
+    {
+      "file": "manifest.json",
+      "bytes": 1617,
+      "sha256": "12cc9eaf83a4613afce743429814c3c8e3904d2573bf47ee8dcb2ea67a9e66a8"
+    },
+    {
+      "file": "public_space_cases_100.xlsx",
+      "bytes": 121838,
+      "sha256": "5ef35ab5bfe612d6b984632386c09e50a35aecf7bdf4424b005fe77bab89e265"
+    },
+    {
+      "file": "case_reader.html",
+      "bytes": 374635,
+      "sha256": "d3a18098fa073a2a5e27d5af13e31de72a9e3b6387736a493930d4be3fddc428"
+    },
+    {
+      "file": "casebook.md",
+      "bytes": 214075,
+      "sha256": "7aa44bd7da447470cbf045690e489a536f8ea856d403a6b2f3cae662e9e33925"
+    },
+    {
+      "file": "SKILL.md",
+      "bytes": 3480,
+      "sha256": "13000410be42365bdb4c9002cda0752302697a4215314a29d3906ea090db6347"
+    },
+    {
+      "file": "data/cases.jsonl",
+      "bytes": 356553,
+      "sha256": "9fd49ba888d3b77fe8b78f30f4f3bc6a5573e848a4e81c8066c1f36e847dc31e"
+    },
+    {
+      "file": "tools/validate.py",
+      "bytes": 3350,
+      "sha256": "c867d456d896177d4f13648f331be0eb6533c99229d6c1f298d8728fbd65b59e"
+    },
+    {
+      "file": "tests/evaluation_prompts.jsonl",
+      "bytes": 3899,
+      "sha256": "6baf0da4f41e10c97f9fc4a3592230512221c2d2d164974d117c5001b3a6f85f"
+    },
+    {
+      "file": "references/distilled_rules.json",
+      "bytes": 8357,
+      "sha256": "3fbccb501f8e8c50cb06408c7307e372db8dce6f7dd4cb1c6a04adcbcae6ef50"
+    },
+    {
+      "file": "references/field_dictionary.json",
+      "bytes": 2617,
+      "sha256": "af60feb98ca77aff19181000ef5c57c3073c86bd91a749b99f42a314b82d0fd6"
+    },
+    {
+      "file": "references/images.json",
+      "bytes": 17285,
+      "sha256": "e202617e1e1c62798bc70cbcac9e908b08cd87f4617c5320f7193383f2744418"
+    },
+    {
+      "file": "references/prior_case_exclusion_register.json",
+      "bytes": 22331,
+      "sha256": "8cefa7f7ef58f583ff4eaf10417f45ffb2a60180894595f824d2281caec49645"
+    },
+    {
+      "file": "references/sources.json",
+      "bytes": 44390,
+      "sha256": "50217486ec8b89cda0aac980f400cc902e0980379ae0eccb95dc837131bc1ba0"
+    },
+    {
+      "file": "references/validation_report.json",
+      "bytes": 473,
+      "sha256": "37234f5076fefdbc0eb5bb4b5e3918adcc6c357c17e18a4708bbb9ee0b1be0a6"
+    }
+  ]
+}
